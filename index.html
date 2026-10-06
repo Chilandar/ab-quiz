@@ -1,0 +1,867 @@
+<title>آب‌شناس ایران</title>
+<style>
+/* Layout concept: a single centered "card" stage (like a hydrology field-notebook page)
+   that the question content flows through; a thin progress rail along the top doubles
+   as a river-course line that fills as the quiz progresses. */
+:root{
+  --bg:#f3efe6;
+  --surface:#fffdf8;
+  --ink:#1f2a28;
+  --muted:#5d6b67;
+  --accent:#0f6e6a;
+  --accent-ink:#f3efe6;
+  --sand:#d8c9a3;
+  --good:#1a7d4a;
+  --good-bg:#e4f3e9;
+  --bad:#b23b2e;
+  --bad-bg:#fbe8e5;
+  --line:#e2d9c4;
+  --shadow:0 20px 40px -24px rgba(16,40,36,.35);
+  --font-display:'Vazirmatn', 'Tahoma', sans-serif;
+  --font-body:'Vazirmatn', 'Tahoma', sans-serif;
+  --font-mono:'Vazirmatn', 'Tahoma', sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121a18;
+    --surface:#1b2523;
+    --ink:#eef1ee;
+    --muted:#9fb0ab;
+    --accent:#4fc3b4;
+    --accent-ink:#0b1a18;
+    --sand:#3b3524;
+    --good:#5bd38a;
+    --good-bg:#16352a;
+    --bad:#ff8a79;
+    --bad-bg:#3a1c1a;
+    --line:#2d3936;
+    --shadow:0 20px 40px -24px rgba(0,0,0,.6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121a18;
+  --surface:#1b2523;
+  --ink:#eef1ee;
+  --muted:#9fb0ab;
+  --accent:#4fc3b4;
+  --accent-ink:#0b1a18;
+  --sand:#3b3524;
+  --good:#5bd38a;
+  --good-bg:#16352a;
+  --bad:#ff8a79;
+  --bad-bg:#3a1c1a;
+  --line:#2d3936;
+  --shadow:0 20px 40px -24px rgba(0,0,0,.6);
+  color-scheme: dark;
+}
+
+*{box-sizing:border-box;}
+html, body{height:100%;}
+body{
+  position:relative;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font-body);
+  direction:rtl;
+  min-height:100%;
+  padding-inline:16px;
+  padding-block:32px;
+  display:flex;
+  justify-content:center;
+  overflow-x:hidden;
+}
+
+/* ---- ambient background: drifting water blobs ---- */
+.ambient{
+  position:fixed;
+  inset:0;
+  z-index:0;
+  overflow:hidden;
+  pointer-events:none;
+}
+.ambient span{
+  position:absolute;
+  border-radius:50%;
+  filter:blur(46px);
+  opacity:.35;
+  background:var(--accent);
+  animation:drift 22s ease-in-out infinite;
+}
+.ambient span:nth-child(1){width:260px; height:260px; top:-60px; right:-60px; animation-duration:24s;}
+.ambient span:nth-child(2){width:220px; height:220px; bottom:-40px; left:-50px; background:var(--good); animation-duration:28s; animation-delay:-6s;}
+.ambient span:nth-child(3){width:160px; height:160px; top:40%; left:60%; background:var(--sand); opacity:.3; animation-duration:19s; animation-delay:-11s;}
+@keyframes drift{
+  0%, 100%{transform:translate(0,0) scale(1);}
+  33%{transform:translate(18px,-22px) scale(1.08);}
+  66%{transform:translate(-14px,16px) scale(.95);}
+}
+.wrap{position:relative; z-index:1;}
+.wrap{
+  width:100%;
+  max-width:640px;
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+
+/* ---- header / river rail ---- */
+.top{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.eyebrow{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:12px;
+}
+.eyebrow h1{
+  font-family:var(--font-display);
+  font-size:1.5rem;
+  font-weight:800;
+  margin:0;
+  letter-spacing:.2px;
+  text-wrap:balance;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.eyebrow h1 .drop{
+  flex:none;
+  width:22px;
+  height:22px;
+  animation:bob 2.6s ease-in-out infinite;
+}
+@keyframes bob{
+  0%,100%{transform:translateY(0) rotate(0);}
+  50%{transform:translateY(-4px) rotate(-6deg);}
+}
+.eyebrow .count{
+  font-variant-numeric:tabular-nums;
+  color:var(--muted);
+  font-size:.92rem;
+  white-space:nowrap;
+}
+.rail{
+  position:relative;
+  height:8px;
+  border-radius:999px;
+  background:var(--sand);
+  overflow:visible;
+}
+.rail .track{
+  position:absolute;
+  inset:0;
+  border-radius:999px;
+  overflow:hidden;
+}
+.rail .track::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  width:var(--progress,0%);
+  background:linear-gradient(90deg,var(--accent),color-mix(in srgb, var(--accent) 60%, var(--good)));
+  background-size:200% 100%;
+  border-radius:999px;
+  transition:width .6s cubic-bezier(.65,0,.35,1);
+  animation:shimmer 1.8s linear infinite;
+}
+.rail .marker{
+  position:absolute;
+  top:50%;
+  right:var(--progress,0%);
+  width:16px;
+  height:16px;
+  border-radius:50% 50% 50% 2px;
+  background:var(--accent);
+  border:2px solid var(--surface);
+  box-shadow:0 2px 6px rgba(0,0,0,.25);
+  transform:translate(50%,-50%) rotate(45deg);
+  transition:right .6s cubic-bezier(.65,0,.35,1);
+}
+@keyframes shimmer{
+  0%{background-position:0% 0;}
+  100%{background-position:-200% 0;}
+}
+
+/* ---- stage / card ---- */
+.stage{
+  position:relative;
+  min-height:360px;
+}
+.card{
+  position:relative;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:20px;
+  box-shadow:var(--shadow);
+  padding:26px 22px;
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+  animation:rollIn .62s cubic-bezier(.25,.65,.3,1) both;
+  transform-origin:50% 100%;
+  will-change:transform, opacity, filter;
+}
+/* the card rolls in and out around a single pivot point at its own
+   bottom-center, like a wheel tipping across the stage */
+@keyframes rollIn{
+  0%{opacity:0; transform:translateX(115%) rotate(130deg); filter:blur(3px);}
+  55%{opacity:1; filter:blur(0);}
+  78%{transform:translateX(-4%) rotate(-7deg);}
+  100%{opacity:1; transform:translateX(0) rotate(0deg); filter:blur(0);}
+}
+.card.leaving{
+  animation:rollOut .46s cubic-bezier(.5,0,.75,0) both;
+}
+@keyframes rollOut{
+  0%{opacity:1; transform:translateX(0) rotate(0deg); filter:blur(0);}
+  100%{opacity:0; transform:translateX(-120%) rotate(-150deg); filter:blur(3px);}
+}
+.wrap{perspective:1000px;}
+
+/* ripple between questions — a droplet wipe */
+.stage-ripple{
+  position:absolute;
+  width:40px;
+  height:40px;
+  margin-left:-20px;
+  margin-top:-20px;
+  border-radius:50%;
+  background:radial-gradient(circle, color-mix(in srgb, var(--accent) 60%, transparent) 0%, color-mix(in srgb, var(--good) 35%, transparent) 45%, transparent 72%);
+  pointer-events:none;
+  z-index:2;
+  animation:rippleOut .65s cubic-bezier(.2,.8,.2,1) forwards;
+}
+@keyframes rippleOut{
+  0%{transform:scale(.2); opacity:.95;}
+  70%{opacity:.5;}
+  100%{transform:scale(8.5); opacity:0;}
+}
+.q-tag{
+  display:inline-flex;
+  align-self:flex-start;
+  align-items:center;
+  gap:6px;
+  font-size:.78rem;
+  color:var(--accent);
+  background:color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius:999px;
+  padding:4px 12px;
+  font-weight:700;
+  opacity:0;
+  animation:optIn .4s cubic-bezier(.22,1,.36,1) .0s both;
+}
+.q-text{
+  font-family:var(--font-display);
+  font-size:1.18rem;
+  font-weight:700;
+  line-height:1.65;
+  margin:0;
+  text-wrap:balance;
+  opacity:0;
+  animation:optIn .45s cubic-bezier(.22,1,.36,1) .04s both;
+}
+.options{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.opt{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  text-align:right;
+  width:100%;
+  padding:14px 16px;
+  border-radius:14px;
+  border:1.5px solid var(--line);
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font-body);
+  font-size:1rem;
+  cursor:pointer;
+  opacity:1;
+  animation:optIn .45s cubic-bezier(.22,1,.36,1) backwards;
+  animation-delay:var(--d, 0ms);
+}
+@keyframes optIn{
+  from{opacity:0; transform:translateY(10px) scale(.97);}
+  to{opacity:1; transform:translateY(0) scale(1);}
+}
+.opt:hover:not(:disabled){
+  border-color:var(--accent);
+  transform:translateY(-2px) scale(1.01);
+  box-shadow:0 8px 18px -12px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.opt:active:not(:disabled){transform:translateY(0);}
+.opt:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+}
+.opt .letter{
+  flex:none;
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  background:var(--sand);
+  color:var(--ink);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:700;
+  font-size:.85rem;
+}
+.opt .label{flex:1; min-width:0;}
+.opt:disabled{cursor:default;}
+
+.opt.correct{
+  border-color:var(--good);
+  background:var(--good-bg);
+  animation:correctPulse .55s cubic-bezier(.22,1,.36,1);
+  box-shadow:0 0 0 0 color-mix(in srgb, var(--good) 45%, transparent);
+}
+.opt.correct .letter{background:var(--good); color:#fff; animation:letterSpin .5s ease;}
+.opt.wrong{
+  border-color:var(--bad);
+  background:var(--bad-bg);
+  animation:shake .5s cubic-bezier(.36,.07,.19,.97);
+}
+.opt.wrong .letter{background:var(--bad); color:#fff; animation:letterSpin .5s ease;}
+.opt.dim{opacity:.45; filter:saturate(.7);}
+.opt{transition:border-color .18s, background .18s, transform .12s, opacity .35s, filter .35s;}
+
+@keyframes correctPulse{
+  0%{transform:scale(1); box-shadow:0 0 0 0 color-mix(in srgb, var(--good) 55%, transparent);}
+  35%{transform:scale(1.035); box-shadow:0 0 0 10px color-mix(in srgb, var(--good) 0%, transparent);}
+  100%{transform:scale(1); box-shadow:0 0 0 0 color-mix(in srgb, var(--good) 0%, transparent);}
+}
+@keyframes letterSpin{
+  0%{transform:scale(.4) rotate(-120deg); opacity:0;}
+  60%{transform:scale(1.15) rotate(8deg); opacity:1;}
+  100%{transform:scale(1) rotate(0);}
+}
+@keyframes shake{
+  0%,100%{transform:translateX(0);}
+  15%{transform:translateX(-7px) rotate(-1deg);}
+  30%{transform:translateX(6px) rotate(1deg);}
+  45%{transform:translateX(-5px);}
+  60%{transform:translateX(4px);}
+  75%{transform:translateX(-2px);}
+}
+
+/* confetti burst for correct answers */
+.burst{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  overflow:visible;
+  z-index:5;
+}
+.burst i{
+  position:absolute;
+  display:block;
+  width:7px;
+  height:7px;
+  opacity:0;
+  animation:fly .9s cubic-bezier(.17,.89,.32,1.28) forwards;
+}
+.burst i.round{border-radius:50%;}
+.burst i.square{border-radius:2px;}
+@keyframes fly{
+  0%{opacity:1; transform:translate(0,0) scale(1) rotate(0);}
+  100%{opacity:0; transform:translate(var(--dx),var(--dy)) scale(.3) rotate(var(--rot));}
+}
+
+/* soft full-card glow flash on answer */
+.card.flash-good::before,
+.card.flash-bad::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  pointer-events:none;
+  animation:flashFade .7s ease-out forwards;
+  z-index:0;
+}
+.card.flash-good::before{background:radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--good) 22%, transparent), transparent 70%);}
+.card.flash-bad::before{background:radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--bad) 20%, transparent), transparent 70%);}
+@keyframes flashFade{
+  0%{opacity:1;}
+  100%{opacity:0;}
+}
+.card.flash-bad{animation:rollIn .62s cubic-bezier(.25,.65,.3,1) both, shakeCard .5s cubic-bezier(.36,.07,.19,.97);}
+@keyframes shakeCard{
+  0%,100%{transform:translateX(0);}
+  20%{transform:translateX(-5px);}
+  40%{transform:translateX(4px);}
+  60%{transform:translateX(-3px);}
+  80%{transform:translateX(2px);}
+}
+
+.foot{
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:12px;
+  min-height:34px;
+}
+.feedback{
+  font-size:.92rem;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  opacity:0;
+  transform:translateY(4px) scale(.97);
+  transition:opacity .25s, transform .25s;
+}
+.feedback.show{opacity:1; transform:translateY(0) scale(1);}
+.feedback.good{color:var(--good);}
+.feedback.bad{color:var(--bad);}
+.feedback .advance-ring{
+  width:18px;
+  height:18px;
+  flex:none;
+}
+.feedback .advance-ring svg{width:100%; height:100%; transform:rotate(-90deg);}
+.feedback .advance-ring circle{
+  fill:none;
+  stroke-width:3;
+}
+.feedback .advance-ring .track{stroke:color-mix(in srgb, currentColor 20%, transparent);}
+.feedback .advance-ring .fill{
+  stroke:currentColor;
+  stroke-dasharray:44;
+  stroke-dashoffset:44;
+}
+.feedback.show .advance-ring .fill{
+  animation:ringDrain var(--advance-ms, 1100ms) linear forwards;
+}
+@keyframes ringDrain{
+  from{stroke-dashoffset:0;}
+  to{stroke-dashoffset:44;}
+}
+
+/* ---- results ---- */
+.result{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:16px;
+  text-align:center;
+  padding:12px 4px 4px;
+  position:relative;
+  overflow:hidden;
+}
+.rain{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  overflow:visible;
+  z-index:5;
+}
+.rain i{
+  position:absolute;
+  top:-14px;
+  display:block;
+  opacity:0;
+  animation:fall linear forwards;
+}
+.rain i.round{border-radius:50%;}
+.rain i.square{border-radius:2px;}
+@keyframes fall{
+  0%{opacity:1; transform:translateY(0) rotate(0);}
+  85%{opacity:1;}
+  100%{opacity:0; transform:translateY(var(--fy)) rotate(var(--frot));}
+}
+.result .ring{
+  animation:ringIn .55s cubic-bezier(.3,1.4,.4,1) .15s both;
+}
+@keyframes ringIn{
+  0%{opacity:0; transform:scale(.6);}
+  100%{opacity:1; transform:scale(1);}
+}
+.result h2{animation:optIn .4s cubic-bezier(.22,1,.36,1) .35s both;}
+.result p{animation:optIn .4s cubic-bezier(.22,1,.36,1) .45s both;}
+.result .restart{animation:optIn .4s cubic-bezier(.22,1,.36,1) .55s both;}
+.result .ring{
+  position:relative;
+  width:148px;
+  height:148px;
+}
+.result .ring svg{width:100%; height:100%; transform:rotate(-90deg);}
+.result .ring circle{
+  fill:none;
+  stroke-width:10;
+  stroke-linecap:round;
+}
+.result .ring .track{stroke:var(--sand);}
+.result .ring .fill{
+  stroke:var(--accent);
+  stroke-dasharray:1;
+  stroke-dashoffset:0;
+  transition:stroke-dasharray 1s cubic-bezier(.2,.8,.2,1);
+}
+.result .ring .score{
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+}
+.result .ring .score b{
+  font-family:var(--font-display);
+  font-size:2.1rem;
+  font-variant-numeric:tabular-nums;
+}
+.result .ring .score span{
+  font-size:.78rem;
+  color:var(--muted);
+}
+.result h2{
+  font-family:var(--font-display);
+  margin:0;
+  font-size:1.3rem;
+}
+.result p{
+  margin:0;
+  color:var(--muted);
+  font-size:.95rem;
+  max-width:46ch;
+  line-height:1.7;
+}
+.restart{
+  appearance:none;
+  border:1.5px solid var(--accent);
+  background:transparent;
+  color:var(--accent);
+  border-radius:12px;
+  padding:10px 22px;
+  font-family:var(--font-body);
+  font-weight:700;
+  font-size:.92rem;
+  cursor:pointer;
+  transition:background .15s, color .15s;
+}
+.restart:hover{background:var(--accent); color:var(--accent-ink);}
+
+.credit{
+  text-align:center;
+  color:var(--muted);
+  font-size:.78rem;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .card, .card.leaving, .card.flash-bad, .opt, .opt.correct, .opt.wrong, .opt .letter,
+  .rail .track::after, .burst i, .feedback .fill, .ambient span, .eyebrow h1 .drop,
+  .q-tag, .q-text, .result .ring, .result h2, .result p, .result .restart, .rain i,
+  .card.flash-good::before, .card.flash-bad::before, .stage-ripple{
+    animation:none !important;
+    opacity:1 !important;
+  }
+  .stage-ripple{display:none !important;}
+  *{transition-duration:.01ms !important;}
+}
+</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+<div class="ambient"><span></span><span></span><span></span></div>
+
+<div class="wrap">
+  <div class="top">
+    <div class="eyebrow">
+      <h1><svg class="drop" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C12 2 5 11.2 5 15.5C5 19.6 8.1 22 12 22C15.9 22 19 19.6 19 15.5C19 11.2 12 2 12 2Z" fill="var(--accent)"/></svg>آب‌شناس ایران</h1>
+      <div class="count" id="count">سوال ۱ از ۱۰</div>
+    </div>
+    <div class="rail"><div class="track"></div><div class="marker"></div></div>
+  </div>
+
+  <div class="stage" id="stage"></div>
+
+  <div class="credit">جغرافیای آب‌های ایران · قنات، برگاب، چاه ارتزین و حوضه‌های آبریز</div>
+</div>
+
+<script>
+(function(){
+  var QUESTIONS = [
+    {q:"قنات برای انتقال کدام نوع منبع آب استفاده می‌شود؟",
+     opts:["آب‌های سطحی","آب‌های زیرزمینی","آب باران","آب دریا"], correct:1},
+    {q:"کدام استان ایران بیشترین تعداد قنات فعال را دارد؟",
+     opts:["خراسان رضوی","گیلان","خوزستان","مازندران"], correct:0},
+    {q:"منبع اصلی تغذیه آبخوان‌های زیرزمینی در ایران چیست؟",
+     opts:["آب دریا","نزولات جوی (باران و برف)","آب رودخانه‌های خارجی","ذوب یخچال‌های قطبی"], correct:1},
+    {q:"«هوتک» سازه سنتی ذخیره آب باران در کدام منطقه ایران رایج است؟",
+     opts:["سیستان","قشم","گیلان","آذربایجان"], correct:0},
+    {q:"چاه ارتزین چه ویژگی خاصی دارد؟",
+     opts:["آب آن باید با پمپ به سطح کشیده شود","آب آن تحت فشار طبیعی خودش به سطح زمین می‌رسد یا فوران می‌کند","فقط در کوهستان حفر می‌شود","عمق آن همیشه کمتر از ۵ متر است"], correct:1},
+    {q:"عمده‌ترین عامل تغذیه قنات‌ها از کجا تأمین می‌شود؟",
+     opts:["آب‌های زیرزمینی دامنه کوه‌ها","آب دریا","تصفیه‌خانه‌های شهری","باران مستقیم روی دشت"], correct:0},
+    {q:"«حوضه آبریز» به چه معناست؟",
+     opts:["محدوده‌ای که آب آن به یک نقطه مشترک می‌ریزد","نوعی سد زیرزمینی","محل ذخیره آب باران در شهرها","نام یک رودخانه خاص"], correct:0},
+    {q:"«مادر چاه» در ساختار قنات چه نقشی دارد؟",
+     opts:["نقطه خروجی نهایی آب","اولین و عمیق‌ترین چاه که به آب زیرزمینی می‌رسد","محل ذخیره آب شرب","سازه جلوگیری از سیل"], correct:1},
+    {q:"پدیده «برگاب» (Interception) به کدام فرآیند اشاره دارد؟",
+     opts:["تبخیر باران از روی برگ درختان","جذب آب توسط ریشه گیاهان","بازگشت آب زهکشی به رودخانه","نفوذ باران به آبخوان زیرزمینی"], correct:0},
+    {q:"حوضه آبریزی که آب آن مستقیماً به اقیانوس یا دریای آزاد می‌ریزد، چه نام دارد؟",
+     opts:["حوضه درون‌ریز","حوضه برون‌ریز","حوضه کارستی","حوضه ساحلی بسته"], correct:1}
+  ];
+  var LETTERS = ["الف","ب","ج","د"];
+
+  var stage = document.getElementById("stage");
+  var rail = document.querySelector(".rail div");
+  var count = document.getElementById("count");
+
+  var state = {i:0, score:0, locked:false};
+
+  function updateRail(){
+    var pct = (state.i / QUESTIONS.length) * 100;
+    document.querySelector(".rail").style.setProperty("--progress", pct + "%");
+    count.textContent = state.i < QUESTIONS.length
+      ? "سوال " + toFa(state.i+1) + " از " + toFa(QUESTIONS.length)
+      : "پایان";
+  }
+
+  function toFa(n){
+    var map = {0:"۰",1:"۱",2:"۲",3:"۳",4:"۴",5:"۵",6:"۶",7:"۷",8:"۸",9:"۹"};
+    return String(n).split("").map(function(c){return map[c] !== undefined ? map[c] : c;}).join("");
+  }
+
+  function renderQuestion(){
+    var item = QUESTIONS[state.i];
+    state.locked = false;
+    updateRail();
+
+    var card = document.createElement("div");
+    card.className = "card";
+
+    var tag = document.createElement("span");
+    tag.className = "q-tag";
+    tag.textContent = "جغرافیای آب";
+    card.appendChild(tag);
+
+    var qText = document.createElement("p");
+    qText.className = "q-text";
+    qText.textContent = item.q;
+    card.appendChild(qText);
+
+    var optsWrap = document.createElement("div");
+    optsWrap.className = "options";
+
+    item.opts.forEach(function(optText, idx){
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "opt";
+      btn.innerHTML = '<span class="letter">' + LETTERS[idx] + '</span><span class="label"></span>';
+      btn.querySelector(".label").textContent = optText;
+      btn.style.setProperty("--d", (80 + idx * 70) + "ms");
+      btn.addEventListener("click", function(){ handleAnswer(idx, item, btn, optsWrap); });
+      optsWrap.appendChild(btn);
+    });
+    card.appendChild(optsWrap);
+
+    var foot = document.createElement("div");
+    foot.className = "foot";
+
+    var feedback = document.createElement("div");
+    feedback.className = "feedback";
+    feedback.id = "feedback";
+
+    foot.appendChild(feedback);
+    card.appendChild(foot);
+
+    var burst = document.createElement("div");
+    burst.className = "burst";
+    burst.id = "burst";
+    card.appendChild(burst);
+
+    stage.innerHTML = "";
+    stage.appendChild(card);
+  }
+
+  function spawnConfetti(container, originX, originY, count){
+    var colors = ["var(--good)", "var(--accent)", "var(--sand)"];
+    var n = count || 18;
+    for(var k = 0; k < n; k++){
+      var p = document.createElement("i");
+      p.className = (k % 2 === 0) ? "round" : "square";
+      var angle = Math.random() * Math.PI * 2;
+      var dist = 36 + Math.random() * 90;
+      var size = 5 + Math.random() * 5;
+      p.style.width = size + "px";
+      p.style.height = size + "px";
+      p.style.setProperty("--dx", (Math.cos(angle) * dist) + "px");
+      p.style.setProperty("--dy", (Math.sin(angle) * dist - 26) + "px");
+      p.style.setProperty("--rot", (Math.random() * 360 - 180) + "deg");
+      p.style.left = originX + "px";
+      p.style.top = originY + "px";
+      p.style.background = colors[k % colors.length];
+      p.style.animationDelay = (Math.random() * 70) + "ms";
+      container.appendChild(p);
+    }
+    setTimeout(function(){ container.innerHTML = ""; }, 1000);
+  }
+
+  function handleAnswer(idx, item, btn, optsWrap){
+    if(state.locked) return;
+    state.locked = true;
+
+    var buttons = optsWrap.querySelectorAll(".opt");
+    buttons.forEach(function(b, i){
+      b.disabled = true;
+      if(i === item.correct){
+        b.classList.add("correct");
+      } else if(i === idx){
+        b.classList.add("wrong");
+      }
+    });
+
+    var isCorrect = idx === item.correct;
+    if(isCorrect) state.score++;
+
+    var card = optsWrap.closest(".card");
+    if(card){
+      card.classList.add(isCorrect ? "flash-good" : "flash-bad");
+    }
+
+    var correctBtn = buttons[item.correct];
+    if(isCorrect && correctBtn){
+      var stageRect = stage.getBoundingClientRect();
+      var btnRect = correctBtn.getBoundingClientRect();
+      var burst = document.getElementById("burst");
+      if(burst){
+        spawnConfetti(burst, btnRect.left - stageRect.left + btnRect.width/2, btnRect.top - stageRect.top + btnRect.height/2, 18);
+      }
+    }
+
+    var advanceMs = isCorrect ? 1000 : 1300;
+    var feedback = document.getElementById("feedback");
+    feedback.style.setProperty("--advance-ms", advanceMs + "ms");
+    var label = state.i === QUESTIONS.length - 1
+      ? (isCorrect ? "پاسخ درست! در حال مشاهده نتیجه" : "پاسخ نادرست · در حال مشاهده نتیجه")
+      : (isCorrect ? "پاسخ درست! سوال بعدی…" : "پاسخ نادرست · سوال بعدی…");
+    feedback.innerHTML =
+      '<span class="advance-ring"><svg viewBox="0 0 18 18">' +
+        '<circle class="track" cx="9" cy="9" r="7"></circle>' +
+        '<circle class="fill" cx="9" cy="9" r="7"></circle>' +
+      '</svg></span><span>' + label + '</span>';
+    feedback.classList.add("show", isCorrect ? "good" : "bad");
+
+    setTimeout(goNext, advanceMs);
+  }
+
+  function triggerRipple(){
+    var wrapEl = document.querySelector(".wrap");
+    if(!wrapEl) return;
+    var ripple = document.createElement("div");
+    ripple.className = "stage-ripple";
+    var left = stage.offsetLeft + stage.offsetWidth / 2;
+    var top = stage.offsetTop + stage.offsetHeight / 2;
+    ripple.style.left = left + "px";
+    ripple.style.top = top + "px";
+    wrapEl.appendChild(ripple);
+    ripple.addEventListener("animationend", function(){ ripple.remove(); });
+    setTimeout(function(){ if(ripple.parentNode) ripple.remove(); }, 800);
+  }
+
+  function goNext(){
+    var card = stage.querySelector(".card");
+    if(card) card.classList.add("leaving");
+    triggerRipple();
+    setTimeout(function(){
+      state.i++;
+      if(state.i >= QUESTIONS.length){
+        renderResult();
+      } else {
+        renderQuestion();
+      }
+    }, 340);
+  }
+
+  function renderResult(){
+    updateRail();
+    var total = QUESTIONS.length;
+    var pct = state.score / total;
+    var circumference = 2 * Math.PI * 64;
+
+    var msg;
+    if(pct === 1) msg = "عالی بود! تسلط کامل به جغرافیای آب‌های ایران داری.";
+    else if(pct >= 0.7) msg = "خیلی خوب! شناخت خوبی از منابع آبی ایران داری.";
+    else if(pct >= 0.4) msg = "قابل قبوله، ولی جای تمرین بیشتر هست.";
+    else msg = "یه بار دیگه امتحان کن تا این مفاهیم جا بیفته.";
+
+    var card = document.createElement("div");
+    card.className = "card result";
+    card.innerHTML =
+      '<div class="rain" id="rain"></div>' +
+      '<div class="ring">' +
+        '<svg viewBox="0 0 148 148">' +
+          '<circle class="track" cx="74" cy="74" r="64"></circle>' +
+          '<circle class="fill" cx="74" cy="74" r="64" style="stroke-dasharray:0 ' + circumference + '"></circle>' +
+        '</svg>' +
+        '<div class="score"><b id="scoreNum">۰/' + toFa(total) + '</b><span>پاسخ درست</span></div>' +
+      '</div>' +
+      '<h2>نتیجه کوییز</h2>' +
+      '<p>' + msg + '</p>' +
+      '<button type="button" class="restart" id="restartBtn">شروع دوباره</button>';
+
+    stage.innerHTML = "";
+    stage.appendChild(card);
+
+    if(pct >= 0.4){
+      var rain = document.getElementById("rain");
+      var colors = ["var(--good)", "var(--accent)", "var(--sand)"];
+      var pieceCount = pct === 1 ? 46 : 26;
+      for(var k = 0; k < pieceCount; k++){
+        var p = document.createElement("i");
+        p.className = (k % 2 === 0) ? "round" : "square";
+        var size = 5 + Math.random() * 6;
+        p.style.width = size + "px";
+        p.style.height = size + "px";
+        p.style.left = (Math.random() * 100) + "%";
+        p.style.background = colors[k % colors.length];
+        p.style.setProperty("--fy", (220 + Math.random() * 90) + "px");
+        p.style.setProperty("--frot", (Math.random() * 500 - 250) + "deg");
+        p.style.animationDuration = (1.4 + Math.random() * 1.1) + "s";
+        p.style.animationDelay = (Math.random() * 500) + "ms";
+        rain.appendChild(p);
+      }
+      setTimeout(function(){ if(rain) rain.innerHTML = ""; }, 3200);
+    }
+
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        var fillLen = circumference * pct;
+        var fill = card.querySelector(".fill");
+        fill.style.strokeDasharray = fillLen + " " + circumference;
+      });
+    });
+
+    var scoreEl = document.getElementById("scoreNum");
+    var shown = 0;
+    var countUp = setInterval(function(){
+      shown++;
+      scoreEl.textContent = toFa(shown) + "/" + toFa(total);
+      if(shown >= state.score){
+        clearInterval(countUp);
+        scoreEl.textContent = toFa(state.score) + "/" + toFa(total);
+      }
+    }, 160);
+    if(state.score === 0){ scoreEl.textContent = "۰/" + toFa(total); }
+
+    document.getElementById("restartBtn").addEventListener("click", function(){
+      state = {i:0, score:0, locked:false};
+      renderQuestion();
+    });
+  }
+
+  renderQuestion();
+})();
+</script>
